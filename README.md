@@ -14,69 +14,75 @@ TODO:
 
 1. Create Droplet 
 
-2. SSH into server - ssh root@{ip-address}
+2. ```SSH into server - ssh root@{ip-address}```
 
-3. sudo apt-get update; sudo apt-get upgrade -y
+3. ```sudo apt-get update; sudo apt-get upgrade -y```
 
-4. sudo apt-get install fail2ban -y
+4. ```sudo apt-get install fail2ban -y```
 
-5. sudo adduser {username}
+5. ```sudo adduser {username}```
     - fill in user info.
 
 6. sudo visudo
-    - under "root    ALL=(ALL:ALL) ALL" add "{username}    ALL=(ALL:ALL) ALL" - don't include quotations
+    - under ```"root    ALL=(ALL:ALL) ALL"``` add ```"{username}    ALL=(ALL:ALL) ALL"``` - don't include quotations
         - can remove root, but from what I've found, it doesn't matter - but it may, IDK.
         
 7. exit server
 
 8. create new ssh key
-    ssh-keygen -t rsa -b 4096
+    ```ssh-keygen -t rsa -b 4096```
+
         - FWIW, RSA can be cracked by a quantum computer.
 
 9. Copy key to server.
-    - ssh-copy-id -i ~/.ssh/{name of key} “username@ip_address”
+    - ```ssh-copy-id -i ~/.ssh/{name of key}.pub “username@ip_address”```
 
 10. SSH into your server (not root)
 
-11. (nano | vim | vi) /etc/ssh/sshd_config
-    - change ssh port from 22 (this will just keep the logs a little cleaner)
-    - change PermitRootLogin to 'no' - don't include quotations
-    - change PasswordAuthentication to 'no' - don't include quotations
-    - exit/save file and run: sudo service ssh restart
+11. ```(nano | vim | vi) /etc/ssh/sshd_config```
+    - change ssh ```port``` from 22 (this will just keep the logs a little cleaner)
+    - change ```PermitRootLogin``` to 'no' - don't include quotations
+    - change ```PasswordAuthentication``` to 'no' - don't include quotations
+    - exit/save file and run: ```sudo service ssh restart```
 
 12. Add fire wall rules - with ex. rules
-    - sudo ufw allow 80 - http
-    - sudo ufw allow 443 - https
-    - sudo ufw allow 25 -smtp
-    - sudo ufw allow 22/{your new ssh port} -ssh
-    - sudo ufw allow from 15.15.15.0/24 to any port 5432 - postgres from remote server, change subnet
-    - sudo ufw enable
+    - ```sudo ufw allow 80``` - http
+    - ```sudo ufw allow 443``` - https
+    - ```sudo ufw allow 25``` -smtp
+    - ```sudo ufw allow 22/{your new ssh port}``` -ssh
+    - ```sudo ufw allow from 15.15.15.0/24 to any port 5432``` - postgres from remote server, change subnet
+    - ```sudo ufw enable```
 
 
 13. Set up pre firewall rules
-    - (nano | vim | vi) /etc/ufw/before.rules
+    - ```(nano | vim | vi) /etc/ufw/before.rules```
     - DROP everything related to all ICMP/Pinging - I believe there are 8-10 of these in total
-        - these are usually the second and third blocks.
+        
+        - these are usually the fourth and fifth blocks.
+
+        - these two blocks have ```ICMP``` mentioned in the comments above them.
+
     - exit/save file and run: sudo ufw reload 
 
 
 
 ## Add SSL to site - letsencrpt  
 
-1. sudo apt-get install letsencrypt 
+1. ```sudo apt-get install letsencrypt``` 
 
-2. letsencrypt certonly --standalone -d example.com -d www.example.com
+2. ```letsencrypt certonly --standalone -d example.com -d www.example.com```
     - nginx needs to be turned-off
-        -sudo service nginx stop
 
-3. sudo crontab -e
+        -```sudo service nginx stop```
+
+3. ```sudo crontab -e```
     - may need to choose editor
 
-4. at the bottom of the file add: 30 2 * * 1 /usr/bin/letsencrypt renew >> /var/log/le-renew.log
+4. at the bottom of the file add: ```30 2 * * 1 /usr/bin/letsencrypt renew >> /var/log/le-renew.log```
     - this will regen a key every monday at 2:30 AM.
 
 5. create DH key:
-    - openssl dhparam -out dhparams.pem 4096
+    - ```openssl dhparam -out dhparams.pem 4096```
 
 ## SECURE SSL
 
@@ -108,8 +114,9 @@ Double check everything on ssllabs.com and securityheaders.io
 
 ## Create an SSH config file - OSX
 
-touch ~/.ssh/config
-sudo (nano | vim | vi) ~/.ssh/config
+`touch ~/.ssh/config`
+
+```sudo (nano | vim | vi) ~/.ssh/config```
 
 
 Host {name} - ex. Personal
@@ -122,6 +129,14 @@ User {your username} - ex. root (don't use root!)
 
 IdentityFile ~/.ssh/example.key - the private key for the server
 
+Example: 
+```
+Host Personal
+HostName 104.159.103.195 
+Port 2222
+User Jack
+IdentityFile ~/.ssh/personal
+```
 
 ## Add SWAP
 * Note SWAPs can be harmful to older SSDs...
@@ -156,3 +171,18 @@ php5 location = /etc/php5/fpm/php.ini
 
 2. sudo (nano | vim | vi) /etc/nginx/nginx.conf
     - client_max_body_size 100M;
+
+## Secure PHP 
+1. Open php.ini  
+
+    - ```sudo (nano | vim | vi) /etc/php/7.0/fpm/php.ini``` 
+
+2. uncomment `cgi.fix_pathinfo=1` - remove the semi-collan in front of it and change the value to 0
+
+    - ```cgi.fix_pathinfo=0```
+
+3. Remove X-Powered-by
+    
+    - ```expose_php = 0```
+
+4. Restart the server: ```sudo systemctl restart php7.0-fpm```
