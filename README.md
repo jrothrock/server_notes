@@ -32,7 +32,7 @@ TODO:
 8. create new ssh key
     ```ssh-keygen -t rsa -b 4096```
 
-        - FWIW, RSA can be cracked by a quantum computer.
+    - FWIW, RSA can be cracked by a quantum computer, if you worry about that ish.
 
 9. Copy key to server.
     - ```ssh-copy-id -i ~/.ssh/{name of key}.pub “username@ip_address”```
@@ -70,7 +70,7 @@ TODO:
 
 1. ```sudo apt-get install letsencrypt``` 
 
-2. ```letsencrypt certonly --standalone -d example.com -d www.example.com```
+2. ```letsencrypt certonly --standalone --rsa-key-size 4096 --force-renew -d example.com -d www.example.com```
     - nginx needs to be turned-off
 
         -```sudo service nginx stop```
@@ -78,11 +78,11 @@ TODO:
 3. ```sudo crontab -e```
     - may need to choose editor
 
-4. at the bottom of the file add: ```30 2 * * 1 /usr/bin/letsencrypt renew >> /var/log/le-renew.log```
+4. at the bottom of the file add: ```30 2 * * 1 /usr/bin/letsencrypt renew --rsa-key-size 4096 >> /var/log/le-renew.log```
     - this will regen a key every monday at 2:30 AM.
 
 5. create DH key:
-    - ```openssl dhparam -out dhparams.pem 4096```
+    - ```openssl dhparam -out -out /etc/ssl/certs/dhparam.pem 3072```
 
 ## SECURE SSL
 
@@ -106,6 +106,9 @@ I may upload the actual nginx file later, but for now, I'll just add the neccess
  ssl_ciphers 'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA';
 
  ssl_prefer_server_ciphers on;
+ ssl_ecdh_curve secp384r1;
+ ssl_session_cache shared:SSL:10m;
+ ssl_session_tickets off;
  add_header Strict-Transport-Security "max-age=31536000; includeSubdomains; preload" ;
  ssl_session_timeout 1d;
 ```
@@ -141,21 +144,21 @@ IdentityFile ~/.ssh/personal
 ## Add SWAP
 * Note SWAPs can be harmful to older SSDs...
 
-1. sudo fallocate -l 4G /swapfile
-2. ls -lh /swapfile
-3. sudo chmod 600 /swapfile
-4. ls -lh /swapfile
-5. sudo mkswap /swapfile
-6. sudo swapon /swapfile
-7. sudo nano /etc/fstab
+1. ```sudo fallocate -l 4G /swapfile```
+2. ```ls -lh /swapfile```
+3. ```sudo chmod 600 /swapfile```
+4. ```ls -lh /swapfile```
+5. ```sudo mkswap /swapfile```
+6. ```sudo swapon /swapfile```
+7. ```sudo nano /etc/fstab```
 8. Add to the bottom of the file:
-    - /swapfile   none    swap    sw    0   0
-9. sudo sysctl vm.swappiness=10
-10. sudo sysctl vm.vfs_cache_pressure=50
-11. sudo nano /etc/sysctl.conf
+   ``` - /swapfile   none    swap    sw    0   0```
+9. ```sudo sysctl vm.swappiness=10```
+10. ```sudo sysctl vm.vfs_cache_pressure=50```
+11. ```sudo nano /etc/sysctl.conf```
 12. Add to the bottom:
-    - vm.swappiness=10
-    - vm.vfs_cache_pressure = 50
+    - ```vm.swappiness=10```
+    - ```vm.vfs_cache_pressure = 50```
 
 
 ## Increase PHP and Nginx memory sizes:
@@ -163,21 +166,21 @@ IdentityFile ~/.ssh/personal
 php5 location = /etc/php5/fpm/php.ini
 
 1. sudo (nano | vim | vi ) /etc/php7.0/fpm/php.ini
-    - upload_max_filesize = 50M
-    - post_max_size = 50M
-    - max_execution_time = 120
-    - max_input_time = 120
-    - memory_limit = 64M
+    - ```upload_max_filesize = 50M```
+    - ```post_max_size = 50M```
+    - ```max_execution_time = 120```
+    - ```max_input_time = 120```
+    - ```memory_limit = 64M```
 
 2. sudo (nano | vim | vi) /etc/nginx/nginx.conf
-    - client_max_body_size 100M;
+    - ```client_max_body_size 100M;```
 
 ## Secure PHP 
 1. Open php.ini  
 
     - ```sudo (nano | vim | vi) /etc/php/7.0/fpm/php.ini``` 
 
-2. uncomment `cgi.fix_pathinfo=1` - remove the semi-collan in front of it and change the value to 0
+2. uncomment ```cgi.fix_pathinfo=1``` - remove the semi-colon in front of it, and change the value to 0
 
     - ```cgi.fix_pathinfo=0```
 
@@ -185,4 +188,4 @@ php5 location = /etc/php5/fpm/php.ini
     
     - ```expose_php = 0```
 
-4. Restart the server: ```sudo systemctl restart php7.0-fpm```
+4. Restart php: ```sudo systemctl restart php7.0-fpm```
