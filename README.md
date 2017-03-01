@@ -205,14 +205,22 @@ This is honestly a bit of lengthy process. However, Justin Ellingwood has writte
 
  ** MAY NEED TO DO
 
- 5. You get a redirect loop
+ 5. You get a redirect loop:
      - this is due to the flexible ssl. Go to page rules on cloudflare and add a 'always use https' rule for your domain
-     - in your /etc/nginx/sites-availble/default change the redirect to user:
+     - in your /etc/nginx/sites-availble/default change the redirect look like:
         ```
+        server_name    example.com www.example.com;
+
         if ($http_x_forwarded_proto = "http") {
-            return 301 https://$server_name$request_uri;
+     
+        return 301 https://$server_name$request_uri;
+        
         }
         ```
  6. If you get a 500 from the server:
     - you need to change the try_files in the /etc/nginx/sites-availble/default as it may be due to a redirect:
        -change ```try_files $uri $uri/ index.html``` to  ```try_files $uri $uri/ =404```
+
+
+## License 
+    These notes are released under MIT.
