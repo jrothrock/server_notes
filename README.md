@@ -1,11 +1,6 @@
 Here are various notes I've made for creating a server. These rules are for Ubuntu running
 nginx. I have some notes for Apache that I may add at another time.
 
-TODO:
-    1. Apache
-    2. Buffers
-    3. Load balancers
-    4. Add configuration files
 
 
 
@@ -23,7 +18,7 @@ TODO:
 5. ```sudo adduser {username}```
     - fill in user info.
 
-6. sudo visudo
+6. ```sudo visudo```
     - under ```"root    ALL=(ALL:ALL) ALL"``` add ```"{username}    ALL=(ALL:ALL) ALL"``` - don't include quotations
         - can remove root, but from what I've found, it doesn't matter - but it may, IDK.
         
@@ -70,7 +65,7 @@ TODO:
 
 1. ```sudo apt-get install letsencrypt``` 
 
-2. ```letsencrypt certonly --standalone --rsa-key-size 4096 --force-renew -d example.com -d www.example.com```
+2. ```sudo letsencrypt certonly --standalone --rsa-key-size 4096 --force-renew -d example.com -d www.example.com```
     - nginx needs to be turned-off
 
         -```sudo service nginx stop```
@@ -82,7 +77,7 @@ TODO:
     - this will regen a key every monday at 2:30 AM.
 
 5. create DH key:
-    - ```openssl dhparam -out -out /etc/ssl/certs/dhparam.pem 3072```
+    - ```sudo openssl dhparam -out /etc/ssl/certs/dhparam.pem 3072```
 
 ## SECURE SSL
 
@@ -110,10 +105,15 @@ I may upload the actual nginx file later, but for now, I'll just add the neccess
  ssl_session_cache shared:SSL:10m;
  ssl_session_tickets off;
  add_header Strict-Transport-Security "max-age=31536000; includeSubdomains; preload" ;
- ssl_session_timeout 1d;
+ ssl_session_timeout 2h;
+ ssl_stapling on;
+ ssl_stapling_verify on;
 ```
 
+exit and restart nginx - `sudo service nginx restart`
+
 Double check everything on ssllabs.com and securityheaders.io
+
 
 ## Create an SSH config file - OSX
 
@@ -189,3 +189,6 @@ php5 location = /etc/php5/fpm/php.ini
     - ```expose_php = 0```
 
 4. Restart php: ```sudo systemctl restart php7.0-fpm```
+
+## Tripwire
+This is honestly a bit of lengthy process. However, Justin Ellingwood has written a [great piece over at DO on it.](https://www.digitalocean.com/community/tutorials/how-to-use-tripwire-to-detect-server-intrusions-on-an-ubuntu-vps)
