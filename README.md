@@ -192,3 +192,27 @@ php5 location = /etc/php5/fpm/php.ini
 
 ## Tripwire
 This is honestly a bit of lengthy process. However, Justin Ellingwood has written a [great piece over at DO on it.](https://www.digitalocean.com/community/tutorials/how-to-use-tripwire-to-detect-server-intrusions-on-an-ubuntu-vps)
+
+## Cloudflare with S3
+ 1. Create a bucket with the name of your domain, with a subdomain of cdn - cdn.example.com
+    - configure the bucket policy as well as the cors to allow the domain to access
+
+ 2. Assuming you have already pointed your dns HostName at cloudflare, add the cname cdn poiting to cdn.example.com.s3.amazonaws.com
+
+ 3. Change the ssl on cloudflare to flexible
+
+ 4. change the cloud to orange for the cdn cname
+
+ ** MAY NEED TO DO
+
+ 5. You get a redirect loop
+     - this is due to the flexible ssl. Go to page rules on cloudflare and add a 'always use https' rule for your domain
+     - in your /etc/nginx/sites-availble/default change the redirect to user:
+        ```
+        if ($http_x_forwarded_proto = "http") {
+            return 301 https://$server_name$request_uri;
+        }
+        ```
+ 6. If you get a 500 from the server:
+    - you need to change the try_files in the /etc/nginx/sites-availble/default as it may be due to a redirect:
+       -change ```try_files $uri $uri/ index.html``` to  ```try_files $uri $uri/ =404```
