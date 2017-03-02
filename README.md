@@ -49,7 +49,7 @@ nginx. I have some notes for Apache that I may add at another time.
     - ```sudo ufw enable```
 
 
-13. Set up pre firewall rules
+13. Set up pre firewall rules (this will ghost the server - ping packets will be dropped)
     - ```(nano | vim | vi) /etc/ufw/before.rules```
     - DROP everything related to all ICMP/Pinging - I believe there are 8-10 of these in total
         
@@ -57,11 +57,11 @@ nginx. I have some notes for Apache that I may add at another time.
 
         - these two blocks have ```ICMP``` mentioned in the comments above them.
 
-    - exit/save file and run: sudo ufw reload 
+    - exit/save file and run: ```sudo ufw reload ```
 
 
 
-## Add SSL to site - letsencrpt  
+## Add SSL to site - letsencrypt  
 
 1. ```sudo apt-get install letsencrypt``` 
 
@@ -73,8 +73,10 @@ nginx. I have some notes for Apache that I may add at another time.
 3. ```sudo crontab -e```
     - may need to choose editor
 
-4. at the bottom of the file add: ```30 2 * * 1 /usr/bin/letsencrypt renew --rsa-key-size 4096 >> /var/log/le-renew.log```
+4. at the bottom of the file add: ```30 2 * * 1 sudo /usr/bin/letsencrypt renew --rsa-key-size 4096 >> /home/${username}/le-renew.log```
     - this will regen a key every monday at 2:30 AM.
+    - you can try /var/log, but I've run into permission issues when using sudo
+        - you could set this in the root cron though, just remove sudo
 
 5. create DH key:
     - ```sudo openssl dhparam -out /etc/ssl/certs/dhparam.pem 3072```
@@ -112,7 +114,45 @@ I may upload the actual nginx file later, but for now, I'll just add the neccess
 
 exit and restart nginx - `sudo service nginx restart`
 
-Double check everything on ssllabs.com and securityheaders.io
+Double check everything on [ssllabs.com](https://ssllabs.com) and [securityheaders.io](https://securityheaders.io)
+
+## Tripwire
+This is honestly a bit of a lengthy process. However, Justin Ellingwood has written a [great piece over at DO on it.](https://www.digitalocean.com/community/tutorials/how-to-use-tripwire-to-detect-server-intrusions-on-an-ubuntu-vps)
+
+## Configure postfix
+To change postfix from sending from user@domain-localhost, I found the best way is to change the hostname for Ubuntu
+
+1. hostname yourdomain.com
+
+2. ``sudo vi /etc/hostname`` and change it to yourdomain.com
+
+3. You will have to exit your droplet and ssh back into it.
+
+Your hostname will have changed
+
+*** Note
+With the above you will receive an email with your super user account. This isn't ideal. However, you can set up postfix to use an email relay to send stuff from Google instead, see the linode link at the bottom for instructions on how to do so.
+
+## Get email notifications when a user/root is logged into
+0. This is assuming that the tripwire has been set, forcing you to have downloaded a mail client - in the case above, it would be postfix.
+
+1. Let's start with root
+
+    - ```sudo su```
+
+    - ```vi /root/.bashrc```
+
+    - At the bottom of the file add: ```mail -s "Alert: Root Access from `who | cut -d'(' -f2 | cut -d')' -f1`" your_email@domain.com```
+
+2. Your user
+
+    - `vi /home/${username}/.bashrc`
+
+    - At the bottom of the file add: ```echo 'ALERT - Root Shell Access (ServerName) on:' `date` `who` | mail -s "Alert: Root Access from `who | cut -d'(' -f2 | cut -d')' -f1`" your_email@domain.com```
+
+*** Note
+With the above you will receive an email with your super user account. This isn't ideal. However, you can set up postfix to use an email relay to send stuff from Google instead, see the linode link at the bottom for instructions on how to do so.
+
 
 
 ## Create an SSH config file - OSX
@@ -190,14 +230,12 @@ php5 location = /etc/php5/fpm/php.ini
 
 4. Restart php: ```sudo systemctl restart php7.0-fpm```
 
-## Tripwire
-This is honestly a bit of lengthy process. However, Justin Ellingwood has written a [great piece over at DO on it.](https://www.digitalocean.com/community/tutorials/how-to-use-tripwire-to-detect-server-intrusions-on-an-ubuntu-vps)
 
 ## Cloudflare with S3
  1. Create a bucket with the name of your domain, with a subdomain of cdn - cdn.example.com
     - configure the bucket policy as well as the cors to allow the domain to access
 
- 2. Assuming you have already pointed your dns HostName at cloudflare, add the cname cdn poiting to cdn.example.com.s3.amazonaws.com
+ 2. Assuming you have already pointed your dns HostName at cloudflare, add the cname cdn pointing to cdn.example.com.s3.amazonaws.com
 
  3. Change the ssl on cloudflare to flexible
 
@@ -221,6 +259,17 @@ This is honestly a bit of lengthy process. However, Justin Ellingwood has writte
     - you need to change the try_files in the /etc/nginx/sites-availble/default as it may be due to a redirect:
        -change ```try_files $uri $uri/ index.html``` to  ```try_files $uri $uri/ =404```
 
+## Closing notes:
+There are other practices that need to be followed to ensure security - always using sftp, using different keys for different servers, always running `sudo apt-get update; sudo apt-get upgrade -y` when logging into the server, not reusing the same passwords - but in the end, if someone finds a zero day in the hypervisor - in this instance DO's - none of this really matters.
+
+Also, in the above, having the email sent showing the super user's account name isn't ideal. I currently haven't figured out a way to 'spoof' the name to just show "mail" or something. However, relaying can be done to use something like gmail - you could then use an email alias through gmail.
+
+[https://www.linode.com/docs/email/postfix/postfix-smtp-debian7](https://www.linode.com/docs/email/postfix/postfix-smtp-debian7)
+
+## Extras
+Here's a great video that goes into some of the stuff listed above while setting up a DO server: 
+
+[https://www.youtube.com/watch?v=YZzhIIJmlE0](https://www.youtube.com/watch?v=YZzhIIJmlE0)
 
 ## License 
     These notes are released under MIT.
