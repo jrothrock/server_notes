@@ -43,7 +43,7 @@ nginx. I have some notes for Apache that I may add at another time.
 12. Add fire wall rules - with ex. rules
     - ```sudo ufw allow 80``` - http
     - ```sudo ufw allow 443``` - https
-    - ```sudo ufw allow 25``` -smtp
+    - ```sudo ufw limit ssh``` - rate limit SSH
     - ```sudo ufw allow 22/{your new ssh port}``` -ssh
     - ```sudo ufw allow from 15.15.15.0/24 to any port 5432``` - postgres from remote server, change subnet
     - ```sudo ufw enable```
@@ -251,13 +251,86 @@ php5 location = /etc/php5/fpm/php.ini
 
         if ($http_x_forwarded_proto = "http") {
      
-        return 301 https://$server_name$request_uri;
+            return 301 https://$server_name$request_uri;
         
         }
         ```
  6. If you get a 500 from the server:
     - you need to change the try_files in the /etc/nginx/sites-availble/default as it may be due to a redirect:
        -change ```try_files $uri $uri/ index.html``` to  ```try_files $uri $uri/ =404```
+
+## Mitigate DoS on Nginx
+1. add the limits outside the server block
+2. add the client timeouts to close long connections
+3. add the limits to the location
+4. deny areas where people may try to access during a DDoS
+```
+limit_req_zone $binary_remote_addr zone=one:10m rate=1r/m;
+limit_conn_zone $binary_remote_addr zone=addr:10m;
+server {
+    # other stuff
+
+    client_body_timeout 5s;
+    client_header_timeout 5s;
+
+    location / {
+        limit_req zone=one burst=5;
+        limit_conn addr 10;
+        # other stuff
+    }
+
+    ## can change this to /login or where ever. You may just want to set it to your ip
+    location /wp-login.php {
+        # allow 111.333.444.555
+        deny all;
+    }
+
+    #other stuff
+}
+```
+## Gzip
+Later I may try and update this to use [brotli](https://afasterweb.com/2016/03/15/serving-up-brotli-with-nginx-and-jekyll/)
+
+1. ```sudo vi /etc/nginx/nginx.conf```
+2. Make yours look similar to:
+```
+        # Gzip Settings
+        ##
+
+        gzip on;
+        gzip_disable "msie6";
+
+        gzip_vary on;
+        gzip_proxied any;
+        gzip_comp_level 6;
+        gzip_buffers 4 42k;
+        gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/x-font-ttf application/x-font-opentype font/eot font/opentype image/svg+xml font/otf application/xml+rss text/javascript;
+``` 
+
+Double check this with [GTmetrix](https://gtmetrix.com) and [Web Page Test](https://webpagetest.org)
+
+## Enable caching
+1. ``` sudo vi /etc/nginx/sites-available/default ```
+2. Add this somewhere in your server block:
+    - ```location ~* \.(ico|svg|css|js|gif|jpe?g|png|woff|woff2)$ { expires 30d; add_header Pragma public; add_header Cache-Control "public"; }```
+
+Double check this with [GTmetrix](https://gtmetrix.com) and [Web Page Test](https://webpagetest.org)
+
+## Enable http2
+If you are using ssl, which you should be, only add this to your ssl server block. 
+
+1. ```sudo vi /etc/nginx/sites-available/default```
+2. update ssl server block:
+    ``` 
+        server {
+
+            listen 443 http2 default_server;
+
+            listen [::]:443 ssl http2 default_server;
+
+            #other stuff 
+    ```
+
 
 ## Closing notes:
 There are other practices that need to be followed to ensure security - always using sftp, using different keys for different servers, always running `sudo apt-get update; sudo apt-get upgrade -y` when logging into the server, not reusing the same passwords - but in the end, if someone finds a zero day in the hypervisor - in this instance DO's - none of this really matters.
