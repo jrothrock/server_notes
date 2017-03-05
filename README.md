@@ -2,25 +2,24 @@ Here are various notes I've made for creating a server. These rules are for Ubun
 nginx. I have some notes for Apache that I may add at another time.
 
 
-
-
 ## SECURING SERVER
 
 
-1. Create Droplet 
+1. Create Droplet (sudo isn't neccessary for 1-6, as you're root but it's a good habit to get into.)
 
 2. ```SSH into server - ssh root@{ip-address}```
 
-3. ```sudo apt-get update; sudo apt-get upgrade -y```
+3. ```sudo apt-get update; apt-get upgrade -y```
 
 4. ```sudo apt-get install fail2ban -y```
 
 5. ```sudo adduser {username}```
     - fill in user info.
 
-6. ```sudo visudo```
-    - under ```"root    ALL=(ALL:ALL) ALL"``` add ```"{username}    ALL=(ALL:ALL) ALL"``` - don't include quotations
-        - can remove root, but from what I've found, it doesn't matter - but it may, IDK.
+6. Add user to sudo group (two ways to do this, but the second one doesn't scale as well)
+    - first way: ```sudo usermod -aG sudo {username}``` 
+    - second way: ```sudo visudo```.
+         - under ```root    ALL=(ALL:ALL) ALL``` add ```{username}    ALL=(ALL:ALL) ALL```
         
 7. exit server
 
@@ -34,10 +33,10 @@ nginx. I have some notes for Apache that I may add at another time.
 
 10. SSH into your server (not root)
 
-11. ```(nano | vim | vi) /etc/ssh/sshd_config```
+11. ```sudo (nano | vim | vi) /etc/ssh/sshd_config```
     - change ssh ```port``` from 22 (this will just keep the logs a little cleaner)
-    - change ```PermitRootLogin``` to 'no' - don't include quotations
-    - change ```PasswordAuthentication``` to 'no' - don't include quotations
+    - find ```PermitRootLogin``` and change it to ```PermitRootLogin no``` 
+    - find ```PasswordAuthentication``` and change it to ```PasswordAuthentication: no``` 
     - exit/save file and run: ```sudo service ssh restart```
 
 12. Add fire wall rules - with ex. rules
@@ -50,14 +49,14 @@ nginx. I have some notes for Apache that I may add at another time.
 
 
 13. Set up pre firewall rules (this will ghost the server - ping packets will be dropped)
-    - ```(nano | vim | vi) /etc/ufw/before.rules```
+    - ```sudo (nano | vim | vi) /etc/ufw/before.rules```
     - DROP everything related to all ICMP/Pinging - I believe there are 8-10 of these in total
         
         - these are usually the fourth and fifth blocks.
 
         - these two blocks have ```ICMP``` mentioned in the comments above them.
 
-    - exit/save file and run: ```sudo ufw reload ```
+    - exit/save file and run: ```sudo ufw reload```
 
 
 
@@ -82,7 +81,6 @@ nginx. I have some notes for Apache that I may add at another time.
     - ```sudo openssl dhparam -out /etc/ssl/certs/dhparam.pem 3072```
 
 ## SECURE SSL
-
 I may upload the actual nginx file later, but for now, I'll just add the neccessary parts.
 
 ```
@@ -98,7 +96,9 @@ I may upload the actual nginx file later, but for now, I'll just add the neccess
  ssl_certificate_key /etc/letsencrypt/live/{your site}/privkey.pem;
  ssl_dhparam /etc/ssl/certs/dhparam.pem;
 
- ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+ # As of writing this, TSLv1.3 hadn't be released for Nginx, this has most likely changed.
+ #ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+ ssl_protocols TLSv1.1 TLSv1.2;
 
  ssl_ciphers 'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA';
 
@@ -116,6 +116,8 @@ exit and restart nginx - `sudo service nginx restart`
 
 Double check everything on [ssllabs.com](https://ssllabs.com) and [securityheaders.io](https://securityheaders.io)
 
+More information can be found here: [https://www.digitalocean.com/community/tutorials/how-to-secure-nginx-with-let-s-encrypt-on-ubuntu-16-04](https://www.digitalocean.com/community/tutorials/how-to-secure-nginx-with-let-s-encrypt-on-ubuntu-16-04)
+
 ## Tripwire
 This is honestly a bit of a lengthy process. However, Justin Ellingwood has written a [great piece over at DO on it.](https://www.digitalocean.com/community/tutorials/how-to-use-tripwire-to-detect-server-intrusions-on-an-ubuntu-vps)
 
@@ -124,7 +126,7 @@ To change postfix from sending from user@domain-localhost, I found the best way 
 
 1. hostname yourdomain.com
 
-2. ``sudo vi /etc/hostname`` and change it to yourdomain.com
+2. ``sudo (nano | vim | vi) /etc/hostname`` and change it to yourdomain.com
 
 3. You will have to exit your droplet and ssh back into it.
 
@@ -153,7 +155,25 @@ With the above you will receive an email with your super user account. This isn'
 *** Note
 With the above you will receive an email with your super user account. This isn't ideal. However, you can set up postfix to use an email relay to send stuff from Google instead, see the linode link at the bottom for instructions on how to do so.
 
+## Enable Automatic Updates
 
+1. ```sudo apt-get install unattended-upgrades```
+2. ```sudo vi /etc/apt/apt.conf.d/10periodic```
+3. Update the following lines to resemble below:
+```
+    APT::Periodic::Update-Package-Lists "1";
+    APT::Periodic::Download-Upgradeable-Packages "1";
+    APT::Periodic::AutocleanInterval "7";
+    APT::Periodic::Unattended-Upgrade "1";
+```
+4. ``` sudo vi /etc/apt/apt.conf.d/50unattended-upgrades```
+5. Update the file to resemble below - currently it's just set to do security updates, but uncommenting the second line will include package updates.
+```
+    Unattended-Upgrade::Allowed-Origins {
+        "Ubuntu lucid-security";
+     // "Ubuntu lucid-updates";
+    };
+```
 
 ## Create an SSH config file - OSX
 
@@ -180,6 +200,7 @@ Port 2222
 User Jack
 IdentityFile ~/.ssh/personal
 ```
+can now use ssh as: ```ssh Personal```
 
 ## Add SWAP
 * Note SWAPs can be harmful to older SSDs...
@@ -205,17 +226,32 @@ IdentityFile ~/.ssh/personal
 
 php5 location = /etc/php5/fpm/php.ini
 
-1. sudo (nano | vim | vi ) /etc/php7.0/fpm/php.ini
-    - ```upload_max_filesize = 50M```
-    - ```post_max_size = 50M```
-    - ```max_execution_time = 120```
-    - ```max_input_time = 120```
-    - ```memory_limit = 64M```
+1. ```sudo (nano | vim | vi ) /etc/php7.0/fpm/php.ini```
+2. Update the following lines to resemble below:
+```
+    upload_max_filesize = 50M
+    post_max_size = 50M
+    max_execution_time = 120
+    max_input_time = 120
+    memory_limit = 64M
+```
 
-2. sudo (nano | vim | vi) /etc/nginx/nginx.conf
-    - ```client_max_body_size 100M;```
+3. ```sudo (nano | vim | vi) /etc/nginx/nginx.conf```
+4. Update ```client_max_body_size``` to: ```client_max_body_size 100M;```
 
-## Secure PHP 
+
+## Remove Nginx headers
+1. add `server_tokens off` to ```/etc/nginx/sites-available/defult/```
+    - this will only remove the version
+
+***I haven't tested this, but if you want to change the server in the response
+
+2. `sudo apt-get install nginx-extras`
+3. `more_set_headers 'Server: some server name';`
+
+Test it: `curl -I ${website}`
+
+## Remove PHP headers
 1. Open php.ini  
 
     - ```sudo (nano | vim | vi) /etc/php/7.0/fpm/php.ini``` 
@@ -230,14 +266,19 @@ php5 location = /etc/php5/fpm/php.ini
 
 4. Restart php: ```sudo systemctl restart php7.0-fpm```
 
+## Remove Express headers
 
-## Cloudflare with S3
+    app.disable('x-powered-by');
+
+## Cloudflare with S3 - You should double check everything for this section.
  1. Create a bucket with the name of your domain, with a subdomain of cdn - cdn.example.com
     - configure the bucket policy as well as the cors to allow the domain to access
 
- 2. Assuming you have already pointed your dns HostName at cloudflare, add the cname cdn pointing to cdn.example.com.s3.amazonaws.com
+ 2. Assuming you have already pointed your dns hostservers at cloudflare, add the cname cdn pointing to cdn.example.com.s3.amazonaws.com
 
  3. Change the ssl on cloudflare to flexible
+    - this will cause data to be sent to the server insecure.
+        - you may not be able to do cdn.yoursite.com without the flexible though
 
  4. change the cloud to orange for the cdn cname
 
@@ -265,7 +306,7 @@ php5 location = /etc/php5/fpm/php.ini
 3. add the limits to the location
 4. deny areas where people may try to access during a DDoS
 ```
-limit_req_zone $binary_remote_addr zone=one:10m rate=1r/m;
+limit_req_zone $binary_remote_addr zone=one:10m rate=3r/m;
 limit_conn_zone $binary_remote_addr zone=addr:10m;
 server {
     # other stuff
@@ -344,5 +385,6 @@ Here's a great video that goes into some of the stuff listed above while setting
 
 [https://www.youtube.com/watch?v=YZzhIIJmlE0](https://www.youtube.com/watch?v=YZzhIIJmlE0)
 
+Reddit discussion - [https://www.reddit.com/r/webdev/comments/5x59z2/step_by_step_guide_on_how_to_secureconfigure_an/](https://www.reddit.com/r/webdev/comments/5x59z2/step_by_step_guide_on_how_to_secureconfigure_an/)
 ## License 
     These notes are released under MIT.
