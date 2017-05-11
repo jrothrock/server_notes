@@ -271,6 +271,8 @@ Test it: `curl -I ${website}`
     app.disable('x-powered-by');
 
 ## Cloudflare with S3 - You should double check everything for this section.
+ Update: You can not use Cloudflare with S3 - if you're looking to have SSL. See the comments on this SO question for more info: https://stackoverflow.com/questions/43645907/s3-and-cloudflare-flexible-ssl-handshakes
+    
  1. Create a bucket with the name of your domain, with a subdomain of cdn - cdn.example.com
     - configure the bucket policy as well as the cors to allow the domain to access
 
