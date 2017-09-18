@@ -1,15 +1,13 @@
-Here are various notes I've made for creating a server. These rules are for Ubuntu running
-nginx. I have some notes for Apache that I may add at another time.
-
+Here are various notes I've made for creating a server. These rules are for Ubuntu running Nginx. 
 
 ## SECURING SERVER
 
 
-1. Create Droplet (sudo isn't neccessary for 1-6, as you're root but it's a good habit to get into.)
+1. Create droplet (sudo isn't neccessary for 1-6, as you're root but it's a good habit to get into.)
 
 2. ```SSH into server - ssh root@{ip-address}```
 
-3. ```sudo apt-get update; apt-get upgrade -y```
+3. ```sudo apt-get update; sudo apt-get upgrade -y```
 
 4. ```sudo apt-get install fail2ban -y```
 
@@ -58,9 +56,7 @@ nginx. I have some notes for Apache that I may add at another time.
 
     - exit/save file and run: ```sudo ufw reload```
 
-
-
-## Add SSL to site - letsencrypt  
+## Add SSL - Let's Encrypt  
 
 1. ```sudo apt-get install letsencrypt``` 
 
@@ -121,8 +117,8 @@ More information can be found here: [https://www.digitalocean.com/community/tuto
 ## Tripwire
 This is honestly a bit of a lengthy process. However, Justin Ellingwood has written a [great piece over at DO on it.](https://www.digitalocean.com/community/tutorials/how-to-use-tripwire-to-detect-server-intrusions-on-an-ubuntu-vps)
 
-## Configure postfix
-To change postfix from sending from user@domain-localhost, I found the best way is to change the hostname for Ubuntu
+## Configure Postfix
+To change Postfix from sending from user@domain-localhost, I found the best way is to change the hostname for Ubuntu
 
 1. hostname yourdomain.com
 
@@ -133,10 +129,10 @@ To change postfix from sending from user@domain-localhost, I found the best way 
 Your hostname will have changed
 
 *** Note
-With the above you will receive an email with your super user account. This isn't ideal. However, you can set up postfix to use an email relay to send stuff from Google instead, see the linode link at the bottom for instructions on how to do so.
+With the above you will receive an email with your super user account. This isn't ideal. However, you can set up Postfix to use an email relay to send stuff from Google instead, see the Linode link at the bottom for instructions on how to do so.
 
 ## Get email notifications when a user/root is logged into
-0. This is assuming that the tripwire has been set, forcing you to have downloaded a mail client - in the case above, it would be postfix.
+0. This is assuming that the tripwire has been set, forcing you to have downloaded a mail client - in the case above, it would be Postfix.
 
 1. Let's start with root
 
@@ -153,7 +149,7 @@ With the above you will receive an email with your super user account. This isn'
     - At the bottom of the file add: ```echo 'ALERT - Root Shell Access (ServerName) on:' `date` `who` | mail -s "Alert: Root Access from `who | cut -d'(' -f2 | cut -d')' -f1`" your_email@domain.com```
 
 *** Note
-With the above you will receive an email with your super user account. This isn't ideal. However, you can set up postfix to use an email relay to send stuff from Google instead, see the linode link at the bottom for instructions on how to do so.
+With the above you will receive an email with your super user account. This isn't ideal. However, you can set up Postfix to use an email relay to send stuff from Google instead, see the linode link at the bottom for instructions on how to do so.
 
 ## Enable Automatic Updates
 
@@ -221,7 +217,6 @@ can now use ssh as: ```ssh Personal```
     - ```vm.swappiness=10```
     - ```vm.vfs_cache_pressure = 50```
 
-
 ## Increase PHP and Nginx memory sizes:
 
 php5 location = /etc/php5/fpm/php.ini
@@ -239,7 +234,6 @@ php5 location = /etc/php5/fpm/php.ini
 3. ```sudo (nano | vim | vi) /etc/nginx/nginx.conf```
 4. Update ```client_max_body_size``` to: ```client_max_body_size 100M;```
 
-
 ## Remove Nginx headers
 1. add `server_tokens off` to ```/etc/nginx/sites-available/defult/```
     - this will only remove the version
@@ -250,6 +244,8 @@ php5 location = /etc/php5/fpm/php.ini
 3. `more_set_headers 'Server: some server name';`
 
 Test it: `curl -I ${website}`
+
+***
 
 ## Remove PHP headers
 1. Open php.ini  
@@ -270,37 +266,19 @@ Test it: `curl -I ${website}`
 
     app.disable('x-powered-by');
 
-## Cloudflare with S3 - You should double check everything for this section.
- Update: You can not use Cloudflare with S3 - if you're looking to have SSL. See the comments on this SO question for more info: https://stackoverflow.com/questions/43645907/s3-and-cloudflare-flexible-ssl-handshakes
-    
- 1. Create a bucket with the name of your domain, with a subdomain of cdn - cdn.example.com
-    - configure the bucket policy as well as the cors to allow the domain to access
+## Serving and Securing assets with S3 over CloudFront
+link: https://jackrothrock.com/a-to-z-with-amazon-s3/
 
- 2. Assuming you have already pointed your dns hostservers at cloudflare, add the cname cdn pointing to cdn.example.com.s3.amazonaws.com
 
- 3. Change the ssl on cloudflare to flexible
-    - this will cause data to be sent to the server insecure.
-        - you may not be able to do cdn.yoursite.com without the flexible though
+## Hosting multiple domains on a single droplet
+link: https://www.digitalocean.com/community/tutorials/how-to-set-up-nginx-server-blocks-virtual-hosts-on-ubuntu-14-04-lts
 
- 4. change the cloud to orange for the cdn cname
-
- ** MAY NEED TO DO
-
- 5. You get a redirect loop:
-     - this is due to the flexible ssl. Go to page rules on cloudflare and add a 'always use https' rule for your domain
-     - in your /etc/nginx/sites-availble/default change the redirect look like:
-        ```
-        server_name    example.com www.example.com;
-
-        if ($http_x_forwarded_proto = "http") {
-     
-            return 301 https://$server_name$request_uri;
-        
-        }
-        ```
- 6. If you get a 500 from the server:
-    - you need to change the try_files in the /etc/nginx/sites-availble/default as it may be due to a redirect:
-       -change ```try_files $uri $uri/ index.html``` to  ```try_files $uri $uri/ =404```
+1. create an file for each domains to house the server blocks in /etc/nginx/sites-enabled/
+    1. name of file should be like, `thesite.com`
+    2. you can put the file `/etc/nginx/sites-available/` but you will have to create a symbolic link `ln` to `/etc/nginx/sites-enabled/`
+    3. it should follow the same format as the default file in `/etc/nginx/sites-enabled/`
+2. `sudo vi /etc/nginx/nginx.conf`
+    1. Uncomment: server_names_hash_bucket_size 64;
 
 ## Mitigate DoS on Nginx
 1. add the limits outside the server block
@@ -331,6 +309,7 @@ server {
     #other stuff
 }
 ```
+
 ## Gzip
 Later I may try and update this to use [brotli](https://afasterweb.com/2016/03/15/serving-up-brotli-with-nginx-and-jekyll/)
 
@@ -374,9 +353,10 @@ If you are using ssl, which you should be, only add this to your ssl server bloc
             #other stuff 
     ```
 
+Double check this with [Lighthouse](https://developers.google.com/web/tools/lighthouse/)
 
 ## Closing notes:
-There are other practices that need to be followed to ensure security - always using sftp, using different keys for different servers, always running `sudo apt-get update; sudo apt-get upgrade -y` when logging into the server, not reusing the same passwords - but in the end, if someone finds a zero day in the hypervisor - in this instance DO's - none of this really matters.
+There are other practices that need to be followed to ensure security - always using sftp, using different keys for different servers, always running `sudo apt-get update; sudo apt-get upgrade -y` when logging into the server, not reusing the same passwords - but in the end, if someone finds a zero day in the hypervisor - none of this really matters.
 
 Also, in the above, having the email sent showing the super user's account name isn't ideal. I currently haven't figured out a way to 'spoof' the name to just show "mail" or something. However, relaying can be done to use something like gmail - you could then use an email alias through gmail.
 
@@ -388,5 +368,6 @@ Here's a great video that goes into some of the stuff listed above while setting
 [https://www.youtube.com/watch?v=YZzhIIJmlE0](https://www.youtube.com/watch?v=YZzhIIJmlE0)
 
 Reddit discussion - [https://www.reddit.com/r/webdev/comments/5x59z2/step_by_step_guide_on_how_to_secureconfigure_an/](https://www.reddit.com/r/webdev/comments/5x59z2/step_by_step_guide_on_how_to_secureconfigure_an/)
+
 ## License 
     These notes are released under MIT.
